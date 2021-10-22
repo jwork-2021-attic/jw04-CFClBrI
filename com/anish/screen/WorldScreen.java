@@ -7,55 +7,105 @@ import com.anish.calabashbros.BubbleSorter;
 import com.anish.calabashbros.Calabash;
 import com.anish.calabashbros.World;
 
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Random;
+
 import asciiPanel.AsciiPanel;
 
 public class WorldScreen implements Screen {
 
     private World world;
-    private Calabash[] bros;
+    private Calabash[][] bros;
     String[] sortSteps;
 
     public WorldScreen() {
         world = new World();
 
-        bros = new Calabash[7];
-
-        bros[3] = new Calabash(new Color(204, 0, 0), 1, world);
-        bros[5] = new Calabash(new Color(255, 165, 0), 2, world);
-        bros[1] = new Calabash(new Color(252, 233, 79), 3, world);
-        bros[0] = new Calabash(new Color(78, 154, 6), 4, world);
-        bros[4] = new Calabash(new Color(50, 175, 255), 5, world);
-        bros[6] = new Calabash(new Color(114, 159, 207), 6, world);
-        bros[2] = new Calabash(new Color(173, 127, 168), 7, world);
-
-        world.put(bros[0], 10, 10);
-        world.put(bros[1], 12, 10);
-        world.put(bros[2], 14, 10);
-        world.put(bros[3], 16, 10);
-        world.put(bros[4], 18, 10);
-        world.put(bros[5], 20, 10);
-        world.put(bros[6], 22, 10);
+        createCalabashes();
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                world.put(bros[i][j], 10 + i * 2, 10 + j * 2);
+            }
+        }
 
         BubbleSorter<Calabash> b = new BubbleSorter<>();
-        b.load(bros);
+        b.load(toArray(bros));
         b.sort();
 
         sortSteps = this.parsePlan(b.getPlan());
+    }
+
+    private ArrayList<Integer> createOrder() {
+        ArrayList<Integer> li = new ArrayList<>();
+        for (int i = 0; i < 256; i++) {
+            li.add(i);
+        }
+        Collections.shuffle(li);
+        return li;
+    }
+
+    private int[][] createColors() {
+        int[][] res = new int[16][16];
+        int i = 0, j = 0;
+        HashSet<Integer> s = new HashSet<>();
+        Random r = new Random();
+        while (i < 16) {
+            int t = r.nextInt(1 << 24);
+            if (s.contains(t)) {
+                continue;
+            }
+            s.add(t);
+            res[i][j] = t;
+            j++;
+            if (j == 16) {
+                i++;
+                j = 0;
+            }
+        }
+        return res;
+    }
+
+    private void createCalabashes() {
+        int[][] colors = createColors();
+        ArrayList<Integer> order = createOrder();
+        bros = new Calabash[16][16];
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                int r = colors[i][j] & 0xFF;
+                int g = (colors[i][j] & 0xFF00) >> 8;
+                int b = (colors[i][j] & 0xFF0000) >> 16;
+                bros[i][j] = new Calabash(new Color(r, g, b), order.get(i * 16 + j), world);
+            }
+        }
+    }
+
+    private Calabash[] toArray(Calabash[][] arr) {
+        Calabash[] res = new Calabash[arr.length * arr.length];
+        for (int i = 0; i < arr.length; i++) {
+            for (int j = 0; j < arr.length; j++) {
+                res[i * arr.length + j] = arr[i][j];
+            }
+        }
+        return res;
     }
 
     private String[] parsePlan(String plan) {
         return plan.split("\n");
     }
 
-    private void execute(Calabash[] bros, String step) {
+    private void execute(Calabash[][] bros, String step) {
         String[] couple = step.split("<->");
         getBroByRank(bros, Integer.parseInt(couple[0])).swap(getBroByRank(bros, Integer.parseInt(couple[1])));
     }
 
-    private Calabash getBroByRank(Calabash[] bros, int rank) {
-        for (Calabash bro : bros) {
-            if (bro.getRank() == rank) {
-                return bro;
+    private Calabash getBroByRank(Calabash[][] bros, int rank) {
+        for (int i = 0; i < bros.length; i++) {
+            for (int j = 0; j < bros.length; j++) {
+                if (bros[i][j].getRank() == rank) {
+                    return bros[i][j];
+                }
             }
         }
         return null;
